@@ -31,42 +31,57 @@ export default function AlumniVerification({ currentData, onVerified }: Verifica
         return;
       }
 
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = (event) => {
-        const img = new Image();
-        img.src = event.target?.result as string;
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          let width = img.width;
-          let height = img.height;
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      
+      const timeout = setTimeout(() => {
+        URL.revokeObjectURL(url);
+        reject(new Error("Image loading timed out. The file might be too large for your device."));
+      }, 20000); // 20s timeout for image loading
 
-          // Max dimension 2000px
-          const MAX_DIM = 2000;
-          if (width > height) {
-            if (width > MAX_DIM) {
-              height *= MAX_DIM / width;
-              width = MAX_DIM;
-            }
-          } else {
-            if (height > MAX_DIM) {
-              width *= MAX_DIM / height;
-              height = MAX_DIM;
-            }
+      img.onload = () => {
+        clearTimeout(timeout);
+        URL.revokeObjectURL(url);
+        
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        // Max dimension 1600px for better mobile performance
+        const MAX_DIM = 1600;
+        if (width > height) {
+          if (width > MAX_DIM) {
+            height *= MAX_DIM / width;
+            width = MAX_DIM;
           }
+        } else {
+          if (height > MAX_DIM) {
+            width *= MAX_DIM / height;
+            height = MAX_DIM;
+          }
+        }
 
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx?.drawImage(img, 0, 0, width, height);
-          
-          // Compress to JPEG with 0.8 quality
-          const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-          resolve(dataUrl.split(',')[1]);
-        };
-        img.onerror = reject;
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error("Could not initialize canvas context"));
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        // Compress to JPEG with 0.7 quality for faster upload
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+        resolve(dataUrl.split(',')[1]);
       };
-      reader.onerror = reject;
+
+      img.onerror = () => {
+        clearTimeout(timeout);
+        URL.revokeObjectURL(url);
+        reject(new Error("Failed to load image. Please try a different file."));
+      };
+
+      img.src = url;
     });
   };
 
@@ -137,7 +152,7 @@ export default function AlumniVerification({ currentData, onVerified }: Verifica
         - Class must match the Profile Class.
       `;
 
-      const response = await ai.models.generateContent({
+      const aiPromise = ai.models.generateContent({
         model: "gemini-3-flash-preview",
         contents: [
           {
@@ -145,7 +160,7 @@ export default function AlumniVerification({ currentData, onVerified }: Verifica
               { text: prompt },
               {
                 inlineData: {
-                  mimeType: file.type,
+                  mimeType: file.type === 'application/pdf' ? file.type : 'image/jpeg',
                   data: base64Data
                 }
               }
@@ -156,6 +171,12 @@ export default function AlumniVerification({ currentData, onVerified }: Verifica
           responseMimeType: "application/json"
         }
       });
+
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error("AI verification timed out. Please check your connection.")), 45000)
+      );
+
+      const response = await Promise.race([aiPromise, timeoutPromise]) as any;
 
       const result = JSON.parse(response.text || '{}');
 
