@@ -4,6 +4,7 @@ import { collection, query, where, onSnapshot, orderBy, getDocs, setDoc, doc, ge
 import { db, handleFirestoreError, OperationType, auth } from '../firebase';
 import { motion, AnimatePresence } from 'motion/react';
 import { Search, Filter, User as UserIcon, Linkedin, MapPin, Briefcase, GraduationCap, Globe, Instagram, Facebook, Mail, Phone, Calendar, Database, ShieldCheck } from 'lucide-react';
+import { cache } from '../utils/cache';
 
 interface AlumniCombined {
   uid: string;
@@ -168,6 +169,13 @@ export default function Home() {
 
   useEffect(() => {
     const fetchAlumniData = async () => {
+      // Check cache first (Stale-While-Revalidate)
+      const cachedAlumni = cache.get<AlumniCombined[]>('alumni_directory');
+      if (cachedAlumni) {
+        setAlumni(cachedAlumni);
+        setLoading(false);
+      }
+
       // Only fetch if verified or admin
       if (viewerVerificationStatus !== 'verified' && auth.currentUser?.email !== 'jaipuriavidyalayasachin@gmail.com' && auth.currentUser?.email !== 'mesachin486@gmail.com') {
         setLoading(false);
@@ -187,11 +195,11 @@ export default function Home() {
         if (uids.length === 0) {
           setAlumni([]);
           setLoading(false);
+          cache.set('alumni_directory', []);
           return;
         }
 
         // Fetch professional and social data for these UIDs
-        // Note: In a large scale app, we'd use a more efficient way to "join"
         try {
           const fetchCollection = async (collectionName: string) => {
             try {
@@ -215,8 +223,6 @@ export default function Home() {
           const socialMap = new Map();
           socialSnap.docs.forEach(doc => socialMap.set(doc.id, doc.data()));
 
-          const socialData = Array.from(socialMap.values());
-
           const schoolMap = new Map();
           schoolSnap.docs.forEach(doc => schoolMap.set(doc.id, doc.data()));
 
@@ -232,6 +238,8 @@ export default function Home() {
           })) as AlumniCombined[];
 
           setAlumni(combined);
+          // Update cache
+          cache.set('alumni_directory', combined, 15 * 60 * 1000); // Cache for 15 mins
         } catch (err) {
           console.error("Error fetching joined data:", err);
         } finally {
