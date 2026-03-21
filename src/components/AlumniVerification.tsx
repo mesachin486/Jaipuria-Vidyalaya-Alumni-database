@@ -16,7 +16,7 @@ interface VerificationProps {
 export default function AlumniVerification({ currentData, onVerified }: VerificationProps) {
   const [file, setFile] = useState<File | null>(null);
   const [verifying, setVerifying] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(15);
+  const [timeLeft, setTimeLeft] = useState(60);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
@@ -27,7 +27,7 @@ export default function AlumniVerification({ currentData, onVerified }: Verifica
         setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0));
       }, 1000);
     } else {
-      setTimeLeft(15);
+      setTimeLeft(60);
     }
     return () => clearInterval(timer);
   }, [verifying]);
