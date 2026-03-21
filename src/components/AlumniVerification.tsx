@@ -16,8 +16,21 @@ interface VerificationProps {
 export default function AlumniVerification({ currentData, onVerified }: VerificationProps) {
   const [file, setFile] = useState<File | null>(null);
   const [verifying, setVerifying] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(15);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+
+  React.useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (verifying) {
+      timer = setInterval(() => {
+        setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0));
+      }, 1000);
+    } else {
+      setTimeLeft(15);
+    }
+    return () => clearInterval(timer);
+  }, [verifying]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -188,13 +201,18 @@ export default function AlumniVerification({ currentData, onVerified }: Verifica
           <button
             onClick={verifyAlumni}
             disabled={!file || verifying}
-            className="w-full py-3 bg-stone-900 text-white rounded-xl font-medium hover:bg-stone-800 transition-all disabled:opacity-50 flex items-center justify-center space-x-2"
+            className="w-full py-4 bg-stone-900 text-white rounded-xl font-medium hover:bg-stone-800 transition-all disabled:opacity-50 flex items-center justify-center space-x-2"
           >
             {verifying ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Verifying with AI...</span>
-              </>
+              <div className="flex flex-col items-center space-y-1">
+                <div className="flex items-center space-x-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Verifying with AI...</span>
+                </div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-stone-400">
+                  {timeLeft > 0 ? `Estimated time: ~${timeLeft}s` : "Almost there..."}
+                </p>
+              </div>
             ) : (
               <>
                 <ShieldCheck className="w-4 h-4" />

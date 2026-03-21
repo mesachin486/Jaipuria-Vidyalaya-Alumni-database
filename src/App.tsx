@@ -6,6 +6,7 @@ import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import Navbar from './components/Navbar';
 import BottomNav from './components/BottomNav';
+import AIAssistant from './components/AIAssistant';
 import Home from './pages/Home';
 import Profile from './pages/Profile';
 import Login from './pages/Login';
@@ -89,6 +90,7 @@ export default function App() {
             </div>
           </main>
           {user && <BottomNav />}
+          {user && <AIAssistant />}
         </div>
       </Router>
     </ErrorBoundary>
