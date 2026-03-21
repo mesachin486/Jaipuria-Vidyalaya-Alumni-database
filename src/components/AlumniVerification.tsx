@@ -46,13 +46,7 @@ export default function AlumniVerification({ currentData, onVerified }: Verifica
 
     try {
       const base64Data = await fileToBase64(file);
-      
-      const apiKey = process.env.GEMINI_API_KEY;
-      if (!apiKey) {
-        throw new Error("GEMINI_API_KEY is not defined in the environment.");
-      }
-
-      const ai = new GoogleGenAI({ apiKey });
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
       
       const prompt = `
         You are an automated alumni verification system for "Jaipuria Vidyalaya".
@@ -116,41 +110,22 @@ export default function AlumniVerification({ currentData, onVerified }: Verifica
 
       if (result.isVerified) {
         const uid = auth.currentUser.uid;
-        const path = `alumni_verification/${uid}`;
-        try {
-          await setDoc(doc(db, 'alumni_verification', uid), {
-            uid,
-            status: 'verified',
-            verifiedAt: serverTimestamp(),
-            method: 'marksheet_ocr',
-            extractedData: result.extractedData
-          });
-          setSuccess(true);
-          onVerified();
-        } catch (dbErr) {
-          handleFirestoreError(dbErr, OperationType.WRITE, path);
-        }
+        await setDoc(doc(db, 'alumni_verification', uid), {
+          uid,
+          status: 'verified',
+          verifiedAt: serverTimestamp(),
+          method: 'marksheet_ocr',
+          extractedData: result.extractedData
+        });
+        setSuccess(true);
+        onVerified();
       } else {
         setError(result.reason || "Verification failed. The details on the document do not match your profile.");
       }
 
     } catch (err) {
-      console.error("Verification error details:", err);
-      if (err instanceof Error) {
-        if (err.message.includes('permission-denied') || err.message.includes('insufficient permissions')) {
-          setError("Database Error: Permission denied. Please ensure you have pasted the Security Rules into your Firebase Console.");
-        } else if (err.message.includes('GEMINI_API_KEY')) {
-          setError("Configuration Error: AI API key is missing. Please check your environment variables.");
-        } else if (err.message.includes('quota') || err.message.includes('429')) {
-          setError("AI Error: Quota exceeded. Please try again in a few minutes.");
-        } else if (err.message.includes('API key not valid')) {
-          setError("AI Error: The Gemini API key is invalid or restricted.");
-        } else {
-          setError(`Verification Error: ${err.message}`);
-        }
-      } else {
-        setError("An unexpected error occurred during verification. Please try again.");
-      }
+      console.error("Verification error:", err);
+      setError("An error occurred during verification. Please ensure the file is clear and try again.");
     } finally {
       setVerifying(false);
       // "Delete" the file from state (it was never uploaded to a server, only processed in memory)
