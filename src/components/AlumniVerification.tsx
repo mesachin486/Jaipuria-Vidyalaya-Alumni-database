@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { GoogleGenAI } from "@google/genai";
 import { auth, db, handleFirestoreError, OperationType, doc, setDoc, serverTimestamp } from '../firebase';
 import { motion } from 'motion/react';
@@ -18,6 +18,14 @@ export default function AlumniVerification({ currentData, onVerified }: Verifica
   const [verifying, setVerifying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [countdown, setCountdown] = useState(60);
+  const timerRef = useRef<any>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -43,6 +51,11 @@ export default function AlumniVerification({ currentData, onVerified }: Verifica
 
     setVerifying(true);
     setError(null);
+    setCountdown(60);
+
+    timerRef.current = setInterval(() => {
+      setCountdown(prev => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
 
     try {
       const base64Data = await fileToBase64(file);
@@ -127,6 +140,10 @@ export default function AlumniVerification({ currentData, onVerified }: Verifica
       console.error("Verification error:", err);
       setError("An error occurred during verification. Please ensure the file is clear and try again.");
     } finally {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
       setVerifying(false);
       // "Delete" the file from state (it was never uploaded to a server, only processed in memory)
       setFile(null);
@@ -202,6 +219,13 @@ export default function AlumniVerification({ currentData, onVerified }: Verifica
               </>
             )}
           </button>
+
+          {verifying && (
+            <p className="text-center text-[11px] text-stone-500 font-medium">
+              Estimated time to complete: <span className="text-stone-900 font-bold">{countdown}s</span>. 
+              Please do not close this window.
+            </p>
+          )}
         </div>
       ) : (
         <motion.div 

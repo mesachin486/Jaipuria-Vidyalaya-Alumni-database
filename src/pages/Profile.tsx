@@ -299,6 +299,9 @@ export default function Profile() {
     );
   }
 
+  const isAdmin = auth.currentUser?.email === 'jaipuriavidyalayasachin@gmail.com' || auth.currentUser?.email === 'mesachin486@gmail.com';
+  const isPublicToggleDisabled = verificationStatus !== 'verified' && !isAdmin;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -713,28 +716,28 @@ export default function Profile() {
         )}
 
         {/* Visibility Toggle */}
-        <div className={`bg-white rounded-3xl border border-stone-200 p-8 flex items-center justify-between ${verificationStatus !== 'verified' ? 'opacity-60' : ''}`}>
+        <div className={`bg-white rounded-3xl border border-stone-200 p-8 flex items-center justify-between ${isPublicToggleDisabled ? 'opacity-60' : ''}`}>
           <div className="space-y-1">
             <div className="flex items-center space-x-2">
               <span className="text-sm font-medium text-stone-900">Public Directory Visibility</span>
-              {verificationStatus !== 'verified' && (
+              {isPublicToggleDisabled && (
                 <span className="flex items-center text-[10px] font-bold uppercase tracking-widest text-red-500 bg-red-50 px-2 py-0.5 rounded">
                   Verification Required
                 </span>
               )}
             </div>
             <p className="text-xs text-stone-500">
-              {verificationStatus !== 'verified' 
+              {isPublicToggleDisabled 
                 ? "You must verify your alumni status before you can make your profile public."
                 : "When enabled, your profile will be visible to other alumni in the directory."}
             </p>
           </div>
-          <label className={`relative inline-flex items-center ${verificationStatus !== 'verified' ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
+          <label className={`relative inline-flex items-center ${isPublicToggleDisabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
             <input 
               type="checkbox" 
               className="sr-only peer" 
               checked={personal.isPublic} 
-              disabled={verificationStatus !== 'verified'}
+              disabled={isPublicToggleDisabled}
               onChange={(e) => setPersonal({ ...personal, isPublic: e.target.checked })} 
             />
             <div className="w-11 h-6 bg-stone-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-stone-900"></div>

@@ -119,8 +119,8 @@ service cloud.firestore {
     }
 
     match /alumni_personal/{userId} {
-      // Allow verified alumni to read public profiles
-      allow read: if isOwner(userId) || isAdmin() || (isVerifiedAlumni() && resource.data.isPublic == true);
+      // Allow verified alumni to read all profiles
+      allow read: if isOwner(userId) || isAdmin() || isVerifiedAlumni();
       // Allow directory listing for verified alumni
       allow list: if isVerifiedAlumni();
       

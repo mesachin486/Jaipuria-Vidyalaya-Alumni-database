@@ -85,7 +85,7 @@ export default function Home() {
           batchYear,
           phone: `+91 ${Math.floor(7000000000 + Math.random() * 2999999999)}`,
           dob: `19${70 + Math.floor(Math.random() * 30)}-0${1 + Math.floor(Math.random() * 9)}-${10 + Math.floor(Math.random() * 18)}`,
-          isPublic: false,
+          isPublic: true,
           updatedAt: serverTimestamp(),
         };
 
@@ -167,15 +167,18 @@ export default function Home() {
 
   useEffect(() => {
     const fetchAlumniData = async () => {
+      const isAdmin = auth.currentUser?.email === 'jaipuriavidyalayasachin@gmail.com' || auth.currentUser?.email === 'mesachin486@gmail.com';
+      const isVerified = viewerVerificationStatus === 'verified';
+      
       // Only fetch if verified or admin
-      if (viewerVerificationStatus !== 'verified' && auth.currentUser?.email !== 'jaipuriavidyalayasachin@gmail.com' && auth.currentUser?.email !== 'mesachin486@gmail.com') {
+      if (!isVerified && !isAdmin) {
         setLoading(false);
         return;
       }
 
+      // If verified or admin, show all profiles.
       const q = query(
         collection(db, 'alumni_personal'),
-        where('isPublic', '==', true),
         orderBy('batchYear', 'desc')
       );
 
