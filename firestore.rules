@@ -1,0 +1,168 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {userId}
+    // Fields:
+    //   - uid: string (required)
+    //   - email: string (required)
+    //   - displayName: string (optional)
+    //   - photoURL: string (optional)
+    //   - role: string (required, ['admin', 'alumni'])
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: alumni_personal
+    // Document ID: {userId}
+    // Fields:
+    //   - uid: string (required)
+    //   - name: string (required)
+    //   - gmail: string (required)
+    //   - batchYear: number (required)
+    //   - phone: string (optional)
+    //   - dob: string (optional)
+    //   - isPublic: boolean (required)
+    //   - updatedAt: timestamp (optional)
+    //
+    // Collection: alumni_school
+    // Document ID: {userId}
+    // Fields:
+    //   - uid: string (required)
+    //   - lastClass: string (optional)
+    //   - section: string (optional)
+    //   - stream: string (optional)
+    //
+    // Collection: alumni_social
+    // Document ID: {userId}
+    // Fields:
+    //   - uid: string (required)
+    //   - instagram: string (optional)
+    //   - facebook: string (optional)
+    //   - linkedIn: string (optional)
+    //
+    // Collection: alumni_professional
+    // Document ID: {userId}
+    // Fields:
+    //   - uid: string (required)
+    //   - employmentStatus: string (optional)
+    //   ... other professional fields
+    //
+    // Collection: alumni_verification
+    // Document ID: {userId}
+    // Fields:
+    //   - uid: string (required)
+    //   - status: string (required, ['unverified', 'pending', 'verified', 'rejected'])
+    //   - verifiedAt: timestamp (optional)
+    //   - method: string (optional)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && (
+        (request.auth.token.email == "mesachin486@gmail.com" && request.auth.token.email_verified == true) ||
+        (request.auth.token.email == "jaipuriavidyalayasachin@gmail.com" && request.auth.token.email_verified == true) ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+      );
+    }
+
+    function isVerifiedAlumni() {
+      return isAuthenticated() && (
+        isAdmin() ||
+        (exists(/databases/$(database)/documents/alumni_verification/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/alumni_verification/$(request.auth.uid)).data.status == 'verified')
+      );
+    }
+
+    function isValidUser(data) {
+      return data.uid is string && 
+             data.email is string && 
+             data.role in ['admin', 'alumni'] &&
+             (!('displayName' in data) || data.displayName is string) &&
+             (!('photoURL' in data) || data.photoURL is string);
+    }
+
+    function isValidAlumniPersonal(data) {
+      return data.uid is string && 
+             data.name is string && data.name.size() < 100 &&
+             data.gmail is string && 
+             data.batchYear is number &&
+             data.isPublic is bool &&
+             (!('phone' in data) || (data.phone is string && data.phone.size() < 30)) &&
+             (!('dob' in data) || (data.dob is string && data.dob.size() < 20));
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if (isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.role == 'alumni') || isAdmin();
+      allow update: if (isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.role == resource.data.role) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /alumni_personal/{userId} {
+      // Allow verified alumni to read public profiles
+      allow read: if isOwner(userId) || isAdmin() || (isVerifiedAlumni() && resource.data.isPublic == true);
+      // Allow directory listing for verified alumni
+      allow list: if isVerifiedAlumni();
+      
+      allow create: if isOwner(userId) || isAdmin();
+      allow update: if isOwner(userId) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /alumni_school/{userId} {
+      allow read: if isOwner(userId) || isAdmin() || isVerifiedAlumni();
+      allow list: if isVerifiedAlumni();
+      allow create: if isOwner(userId) || isAdmin();
+      allow update: if isOwner(userId) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /alumni_social/{userId} {
+      allow read: if isOwner(userId) || isAdmin() || isVerifiedAlumni();
+      allow list: if isVerifiedAlumni();
+      allow create: if isOwner(userId) || isAdmin();
+      allow update: if isOwner(userId) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /alumni_professional/{userId} {
+      allow read: if isOwner(userId) || isAdmin() || isVerifiedAlumni();
+      allow list: if isVerifiedAlumni();
+      allow create: if isOwner(userId) || isAdmin();
+      allow update: if isOwner(userId) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /alumni_verification/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) || isAdmin();
+      allow update: if isOwner(userId) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Default deny
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}

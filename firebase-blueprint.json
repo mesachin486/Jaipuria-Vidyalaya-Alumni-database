@@ -1,0 +1,126 @@
+{
+  "entities": {
+    "user": {
+      "title": "User",
+      "description": "A user of the alumni network platform.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The unique user ID from Firebase Auth." },
+        "email": { "type": "string", "format": "email", "description": "The user's email address." },
+        "displayName": { "type": "string", "description": "The user's display name." },
+        "photoURL": { "type": "string", "format": "uri", "description": "The user's profile photo URL." },
+        "role": { "type": "string", "enum": ["admin", "alumni"], "description": "The user's role in the system." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the user record was created." }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "alumniPersonal": {
+      "title": "Alumni Personal",
+      "description": "Core identity and personal details.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The unique user ID from Firebase Auth." },
+        "name": { "type": "string", "description": "Full name of the alumnus (captured from Gmail)." },
+        "gmail": { "type": "string", "format": "email", "description": "Gmail address (read-only)." },
+        "batchYear": { "type": "integer", "description": "The year the alumnus passed out." },
+        "phone": { "type": "string", "description": "Contact phone number." },
+        "dob": { "type": "string", "format": "date", "description": "Date of birth." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Last update time." },
+        "isPublic": { "type": "boolean", "description": "Visibility toggle for the directory." }
+      },
+      "required": ["uid", "name", "gmail", "batchYear"]
+    },
+    "alumniSchool": {
+      "title": "Alumni School",
+      "description": "Academic history at Jaipuria Vidyalaya.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The unique user ID from Firebase Auth." },
+        "lastClass": { "type": "string", "description": "Last class attended (e.g., XII)." },
+        "section": { "type": "string", "description": "Section (e.g., A, B, C)." },
+        "stream": { "type": "string", "description": "Stream (e.g., Science, Commerce, Humanities)." }
+      },
+      "required": ["uid"]
+    },
+    "alumniSocial": {
+      "title": "Alumni Social",
+      "description": "Digital presence and social links.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The unique user ID from Firebase Auth." },
+        "instagram": { "type": "string", "description": "Instagram handle or URL." },
+        "facebook": { "type": "string", "description": "Facebook profile URL." },
+        "linkedIn": { "type": "string", "format": "uri", "description": "LinkedIn profile URL." }
+      },
+      "required": ["uid"]
+    },
+    "alumniProfessional": {
+      "title": "Alumni Professional",
+      "description": "Career and professional details.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The unique user ID from Firebase Auth." },
+        "employmentStatus": { "type": "string", "enum": ["Public", "Private", "Business/Self Employed", "Student", "Unemployed", "Others"], "description": "Current employment status." },
+        "otherEmploymentStatus": { "type": "string", "description": "Specified status if 'Others' is selected." },
+        "publicType": { "type": "string", "enum": ["State Government", "Central Government", "Others"], "description": "Type of public employment." },
+        "stateName": { "type": "string", "description": "State name if 'State Government' is selected." },
+        "otherPublicType": { "type": "string", "description": "Specified public type if 'Others' is selected." },
+        "department": { "type": "string", "description": "Department name." },
+        "jobCity": { "type": "string", "description": "City of employment." },
+        "jobRole": { "type": "string", "description": "Job role or designation." },
+        "industry": { "type": "string", "description": "Industry sector." },
+        "companyName": { "type": "string", "description": "Name of the company." },
+        "businessName": { "type": "string", "description": "Name of the business." },
+        "businessCity": { "type": "string", "description": "City of business office." },
+        "collegeName": { "type": "string", "description": "Name of the college." },
+        "passoutYear": { "type": "string", "description": "Year of passing out from college." },
+        "degreeName": { "type": "string", "description": "Name of the degree." },
+        "courseName": { "type": "string", "description": "Name of the course." },
+        "lookingForJob": { "type": "string", "enum": ["Yes", "No"], "description": "Whether the user is looking for a job." },
+        "aspiringJobProfile": { "type": "string", "description": "The job role the user is aspiring for if unemployed." },
+        "yearsOfExperience": { "type": "string", "description": "Years of experience for unemployed alumni." },
+        "country": { "type": "string", "description": "Country of employment or study." }
+      },
+      "required": ["uid"]
+    },
+    "alumniVerification": {
+      "title": "Alumni Verification",
+      "description": "Verification status and metadata.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The unique user ID from Firebase Auth." },
+        "status": { "type": "string", "enum": ["unverified", "pending", "verified", "rejected"], "description": "Current verification status." },
+        "verifiedAt": { "type": "string", "format": "date-time", "description": "When the user was verified." },
+        "rejectionReason": { "type": "string", "description": "Reason for rejection if status is rejected." },
+        "method": { "type": "string", "description": "Method of verification (e.g., 'marksheet_ocr')." }
+      },
+      "required": ["uid", "status"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "user",
+      "description": "User metadata and roles."
+    },
+    "/alumni_personal/{userId}": {
+      "schema": "alumniPersonal",
+      "description": "Core identity details."
+    },
+    "/alumni_school/{userId}": {
+      "schema": "alumniSchool",
+      "description": "Academic history."
+    },
+    "/alumni_social/{userId}": {
+      "schema": "alumniSocial",
+      "description": "Social media links."
+    },
+    "/alumni_professional/{userId}": {
+      "schema": "alumniProfessional",
+      "description": "Career details."
+    },
+    "/alumni_verification/{userId}": {
+      "schema": "alumniVerification",
+      "description": "Verification status."
+    }
+  }
+}
