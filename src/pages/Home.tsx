@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { collection, query, where, onSnapshot, orderBy, getDocs, setDoc, doc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType, auth } from '../firebase';
 import { motion, AnimatePresence } from 'motion/react';
 import { Search, Filter, User as UserIcon, Linkedin, MapPin, Briefcase, GraduationCap, Globe, Instagram, Facebook, Mail, Phone, Calendar, Database, ShieldCheck } from 'lucide-react';
-import { cache } from '../utils/cache';
 
 interface AlumniCombined {
   uid: string;
@@ -169,13 +167,6 @@ export default function Home() {
 
   useEffect(() => {
     const fetchAlumniData = async () => {
-      // Check cache first (Stale-While-Revalidate)
-      const cachedAlumni = cache.get<AlumniCombined[]>('alumni_directory');
-      if (cachedAlumni) {
-        setAlumni(cachedAlumni);
-        setLoading(false);
-      }
-
       // Only fetch if verified or admin
       if (viewerVerificationStatus !== 'verified' && auth.currentUser?.email !== 'jaipuriavidyalayasachin@gmail.com' && auth.currentUser?.email !== 'mesachin486@gmail.com') {
         setLoading(false);
@@ -195,11 +186,11 @@ export default function Home() {
         if (uids.length === 0) {
           setAlumni([]);
           setLoading(false);
-          cache.set('alumni_directory', []);
           return;
         }
 
         // Fetch professional and social data for these UIDs
+        // Note: In a large scale app, we'd use a more efficient way to "join"
         try {
           const fetchCollection = async (collectionName: string) => {
             try {
@@ -223,6 +214,8 @@ export default function Home() {
           const socialMap = new Map();
           socialSnap.docs.forEach(doc => socialMap.set(doc.id, doc.data()));
 
+          const socialData = Array.from(socialMap.values());
+
           const schoolMap = new Map();
           schoolSnap.docs.forEach(doc => schoolMap.set(doc.id, doc.data()));
 
@@ -238,8 +231,6 @@ export default function Home() {
           })) as AlumniCombined[];
 
           setAlumni(combined);
-          // Update cache
-          cache.set('alumni_directory', combined, 15 * 60 * 1000); // Cache for 15 mins
         } catch (err) {
           console.error("Error fetching joined data:", err);
         } finally {
@@ -509,13 +500,13 @@ export default function Home() {
                     </p>
                   </div>
                   <div className="pt-4">
-                    <Link 
-                      to="/profile#verification-section" 
+                    <a 
+                      href="/profile#verification-section" 
                       className="inline-flex items-center space-x-2 px-8 py-3 bg-stone-900 text-white rounded-xl font-medium hover:bg-stone-800 transition-all shadow-lg shadow-stone-900/20"
                     >
                       <span>Verify My Profile</span>
                       <ShieldCheck className="w-4 h-4" />
-                    </Link>
+                    </a>
                   </div>
                 </div>
               </div>

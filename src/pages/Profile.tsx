@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
 import { auth, db, handleFirestoreError, OperationType, query, where, getDocs, collection, doc, getDoc, setDoc, serverTimestamp } from '../firebase';
 import { motion } from 'motion/react';
 import { Save, User as UserIcon, Linkedin, MapPin, Briefcase, GraduationCap, Mail, Info, CheckCircle2, AlertCircle, Phone, Calendar, School, Instagram, Facebook, Building2, Globe, ShieldCheck } from 'lucide-react';
@@ -155,16 +154,6 @@ export default function Profile() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [verificationStatus, setVerificationStatus] = useState<'unverified' | 'pending' | 'verified' | 'rejected'>('unverified');
-  const location = useLocation();
-
-  useEffect(() => {
-    if (location.hash === '#verification-section' && !loading) {
-      const element = document.getElementById('verification-section');
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth' });
-      }
-    }
-  }, [location, loading]);
 
   const fetchVerificationStatus = async () => {
     if (!auth.currentUser) return;

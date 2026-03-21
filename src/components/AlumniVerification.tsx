@@ -16,92 +16,26 @@ interface VerificationProps {
 export default function AlumniVerification({ currentData, onVerified }: VerificationProps) {
   const [file, setFile] = useState<File | null>(null);
   const [verifying, setVerifying] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(15);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-
-  const compressImage = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      // Don't compress PDFs
-      if (file.type === 'application/pdf') {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = () => resolve((reader.result as string).split(',')[1]);
-        reader.onerror = reject;
-        return;
-      }
-
-      const img = new Image();
-      const url = URL.createObjectURL(file);
-      
-      const timeout = setTimeout(() => {
-        URL.revokeObjectURL(url);
-        reject(new Error("Image loading timed out. The file might be too large for your device."));
-      }, 20000); // 20s timeout for image loading
-
-      img.onload = () => {
-        clearTimeout(timeout);
-        URL.revokeObjectURL(url);
-        
-        const canvas = document.createElement('canvas');
-        let width = img.width;
-        let height = img.height;
-
-        // Max dimension 1600px for better mobile performance
-        const MAX_DIM = 1600;
-        if (width > height) {
-          if (width > MAX_DIM) {
-            height *= MAX_DIM / width;
-            width = MAX_DIM;
-          }
-        } else {
-          if (height > MAX_DIM) {
-            width *= MAX_DIM / height;
-            height = MAX_DIM;
-          }
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          reject(new Error("Could not initialize canvas context"));
-          return;
-        }
-        ctx.drawImage(img, 0, 0, width, height);
-        
-        // Compress to JPEG with 0.7 quality for faster upload
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
-        resolve(dataUrl.split(',')[1]);
-      };
-
-      img.onerror = () => {
-        clearTimeout(timeout);
-        URL.revokeObjectURL(url);
-        reject(new Error("Failed to load image. Please try a different file."));
-      };
-
-      img.src = url;
-    });
-  };
-
-  React.useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (verifying) {
-      timer = setInterval(() => {
-        setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0));
-      }, 1000);
-    } else {
-      setTimeLeft(15);
-    }
-    return () => clearInterval(timer);
-  }, [verifying]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setFile(e.target.files[0]);
       setError(null);
     }
+  };
+
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        const base64String = (reader.result as string).split(',')[1];
+        resolve(base64String);
+      };
+      reader.onerror = (error) => reject(error);
+    });
   };
 
   const verifyAlumni = async () => {
@@ -111,7 +45,7 @@ export default function AlumniVerification({ currentData, onVerified }: Verifica
     setError(null);
 
     try {
-      const base64Data = await compressImage(file);
+      const base64Data = await fileToBase64(file);
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
       
       const prompt = `
@@ -152,7 +86,7 @@ export default function AlumniVerification({ currentData, onVerified }: Verifica
         - Class must match the Profile Class.
       `;
 
-      const aiPromise = ai.models.generateContent({
+      const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
         contents: [
           {
@@ -160,7 +94,7 @@ export default function AlumniVerification({ currentData, onVerified }: Verifica
               { text: prompt },
               {
                 inlineData: {
-                  mimeType: file.type === 'application/pdf' ? file.type : 'image/jpeg',
+                  mimeType: file.type,
                   data: base64Data
                 }
               }
@@ -171,12 +105,6 @@ export default function AlumniVerification({ currentData, onVerified }: Verifica
           responseMimeType: "application/json"
         }
       });
-
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error("AI verification timed out. Please check your connection.")), 45000)
-      );
-
-      const response = await Promise.race([aiPromise, timeoutPromise]) as any;
 
       const result = JSON.parse(response.text || '{}');
 
@@ -195,21 +123,9 @@ export default function AlumniVerification({ currentData, onVerified }: Verifica
         setError(result.reason || "Verification failed. The details on the document do not match your profile.");
       }
 
-    } catch (err: any) {
+    } catch (err) {
       console.error("Verification error:", err);
-      let errorMessage = "An error occurred during verification. Please ensure the file is clear and try again.";
-      
-      if (err.message?.includes("API key not valid")) {
-        errorMessage = "Invalid Gemini API Key. Please check your environment variables.";
-      } else if (err.message?.includes("Quota exceeded")) {
-        errorMessage = "AI verification quota exceeded. Please try again later.";
-      } else if (err.message?.includes("Safety")) {
-        errorMessage = "The document was flagged by AI safety filters. Please use a standard marksheet.";
-      } else if (err.name === "AbortError" || err.message?.includes("timeout")) {
-        errorMessage = "Verification timed out. Please check your internet connection and try a smaller file.";
-      }
-      
-      setError(errorMessage);
+      setError("An error occurred during verification. Please ensure the file is clear and try again.");
     } finally {
       setVerifying(false);
       // "Delete" the file from state (it was never uploaded to a server, only processed in memory)
@@ -272,18 +188,13 @@ export default function AlumniVerification({ currentData, onVerified }: Verifica
           <button
             onClick={verifyAlumni}
             disabled={!file || verifying}
-            className="w-full py-4 bg-stone-900 text-white rounded-xl font-medium hover:bg-stone-800 transition-all disabled:opacity-50 flex items-center justify-center space-x-2"
+            className="w-full py-3 bg-stone-900 text-white rounded-xl font-medium hover:bg-stone-800 transition-all disabled:opacity-50 flex items-center justify-center space-x-2"
           >
             {verifying ? (
-              <div className="flex flex-col items-center space-y-1">
-                <div className="flex items-center space-x-2">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Verifying with AI...</span>
-                </div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-stone-400">
-                  {timeLeft > 0 ? `Estimated time: ~${timeLeft}s` : "Almost there..."}
-                </p>
-              </div>
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Verifying with AI...</span>
+              </>
             ) : (
               <>
                 <ShieldCheck className="w-4 h-4" />

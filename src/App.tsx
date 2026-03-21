@@ -1,4 +1,4 @@
-import React, { useState, useEffect, lazy, Suspense } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth, db, handleFirestoreError, OperationType } from './firebase';
@@ -6,19 +6,10 @@ import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import Navbar from './components/Navbar';
 import BottomNav from './components/BottomNav';
+import Home from './pages/Home';
+import Profile from './pages/Profile';
+import Login from './pages/Login';
 import { motion, AnimatePresence } from 'motion/react';
-
-// Lazy load pages
-const Home = lazy(() => import('./pages/Home'));
-const Profile = lazy(() => import('./pages/Profile'));
-const Login = lazy(() => import('./pages/Login'));
-
-// Loading component for Suspense
-const PageLoader = () => (
-  <div className="flex items-center justify-center h-full">
-    <div className="w-8 h-8 border-4 border-stone-200 border-t-stone-900 rounded-full animate-spin"></div>
-  </div>
-);
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -87,15 +78,13 @@ export default function App() {
           <main className="flex-1 overflow-y-auto scroll-smooth">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
               <AnimatePresence mode="wait">
-                <Suspense fallback={<PageLoader />}>
-                  <Routes>
-                    <Route path="/login" element={!user ? <Login /> : <Navigate to="/profile" />} />
-                    <Route path="/" element={user ? <Navigate to="/profile" /> : <Navigate to="/login" />} />
-                    <Route path="/directory" element={user ? <Home /> : <Navigate to="/login" />} />
-                    <Route path="/profile" element={user ? <Profile /> : <Navigate to="/login" />} />
-                    <Route path="*" element={<Navigate to="/" />} />
-                  </Routes>
-                </Suspense>
+                <Routes>
+                  <Route path="/login" element={!user ? <Login /> : <Navigate to="/profile" />} />
+                  <Route path="/" element={user ? <Navigate to="/profile" /> : <Navigate to="/login" />} />
+                  <Route path="/directory" element={user ? <Home /> : <Navigate to="/login" />} />
+                  <Route path="/profile" element={user ? <Profile /> : <Navigate to="/login" />} />
+                  <Route path="*" element={<Navigate to="/" />} />
+                </Routes>
               </AnimatePresence>
             </div>
           </main>
