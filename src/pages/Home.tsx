@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { collection, query, where, onSnapshot, orderBy, getDocs, setDoc, doc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType, auth } from '../firebase';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Filter, User as UserIcon, Linkedin, MapPin, Briefcase, GraduationCap, Globe, Instagram, Facebook, Mail, Phone, Calendar, Database, ShieldCheck } from 'lucide-react';
+import { Search, Filter, User as UserIcon, Users, Linkedin, MapPin, Briefcase, GraduationCap, Globe, Instagram, Facebook, Mail, Phone, Calendar, Database, ShieldCheck } from 'lucide-react';
 
 interface AlumniCombined {
   uid: string;
@@ -61,6 +61,17 @@ export default function Home() {
   const [seeding, setSeeding] = useState(false);
   const [viewerVerificationStatus, setViewerVerificationStatus] = useState<'unverified' | 'pending' | 'verified' | 'rejected'>('unverified');
   const [checkingVerification, setCheckingVerification] = useState(true);
+  const [userCount, setUserCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    const q = query(collection(db, 'users'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setUserCount(snapshot.size);
+    }, (error) => {
+      console.error("Error fetching user count:", error);
+    });
+    return () => unsubscribe();
+  }, []);
 
   const seedTestData = async () => {
     setSeeding(true);
@@ -342,7 +353,15 @@ export default function Home() {
       <div className={`sticky top-0 z-40 bg-stone-50/90 backdrop-blur-sm py-4 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 border-b border-stone-200/50 mb-4 space-y-4 ${isBlurred ? 'pointer-events-none' : ''}`}>
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div className="space-y-2">
-            <h2 className="text-3xl font-serif font-medium text-stone-900">Alumni Directory</h2>
+            <div className="flex items-center space-x-3">
+              <h2 className="text-3xl font-serif font-medium text-stone-900">Alumni Directory</h2>
+              {userCount !== null && (
+                <div className="flex items-center space-x-1.5 px-2.5 py-1 bg-stone-900 text-white rounded-full text-[10px] font-bold uppercase tracking-wider">
+                  <Users className="w-3 h-3" />
+                  <span>{userCount} Joined</span>
+                </div>
+              )}
+            </div>
             <p className="text-stone-500">Discover and connect with fellow Jaipuria Vidyalaya graduates across the globe.</p>
             {auth.currentUser?.email === 'jaipuriavidyalayasachin@gmail.com' && (
               <button 

@@ -1,12 +1,24 @@
-import React, { useState } from 'react';
-import { signInWithPopup } from 'firebase/auth';
+import React, { useState, useEffect } from 'react';
+import { signInWithPopup, onAuthStateChanged } from 'firebase/auth';
 import { auth, googleProvider, db, doc, setDoc, getDoc, serverTimestamp, handleFirestoreError, OperationType } from '../firebase';
+import { collection, onSnapshot, query, getCountFromServer } from 'firebase/firestore';
 import { motion } from 'motion/react';
 import { GraduationCap, ShieldCheck, Users, Globe } from 'lucide-react';
 
 export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [userCount, setUserCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    const q = query(collection(db, 'users'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setUserCount(snapshot.size);
+    }, (error) => {
+      console.error("Error fetching user count:", error);
+    });
+    return () => unsubscribe();
+  }, []);
 
   const handleGoogleLogin = async () => {
     setLoading(true);
@@ -71,6 +83,27 @@ export default function Login() {
           <h2 className="text-5xl font-serif font-medium text-stone-900 leading-tight mb-6">
             Reconnect with your <span className="italic text-stone-500 underline decoration-stone-200 underline-offset-8">alma mater</span>.
           </h2>
+          
+          {userCount !== null && (
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="inline-flex items-center space-x-2 px-4 py-2 bg-stone-100 rounded-full mb-6 border border-stone-200"
+            >
+              <Users className="w-4 h-4 text-stone-900" />
+              <span className="text-sm font-medium text-stone-900">
+                <span className="font-bold">{userCount}</span> People joined
+              </span>
+              <div className="flex -space-x-2 ml-2">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="w-6 h-6 rounded-full border-2 border-white bg-stone-200 flex items-center justify-center overflow-hidden">
+                    <img src={`https://picsum.photos/seed/user${i}/40/40`} alt="user" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
           <p className="text-lg text-stone-600 mb-8 leading-relaxed">
             The official alumni network for Jaipuria Vidyalaya, Jaipur. Join our community to share experiences, find mentors, and stay connected with the school that shaped your future.
           </p>
