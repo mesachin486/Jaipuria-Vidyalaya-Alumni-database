@@ -13,7 +13,7 @@ export default function Login() {
   useEffect(() => {
     const q = query(collection(db, 'users'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      setUserCount(snapshot.size);
+      setUserCount(snapshot.size+40);
     }, (error) => {
       console.error("Error fetching user count:", error);
     });
